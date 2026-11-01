@@ -71,3 +71,29 @@ def test_devices_and_bad_prefix(mod, capsys):
     assert "AAAA1111" in capsys.readouterr().out
     with pytest.raises(SystemExit):
         mod.main(["report", "ZZZZ"])
+
+
+def test_same_timestamp_switch_pairs_correctly(mod, tmp_path):
+    dev = next((tmp_path / "streams/restricted/App.InFocus/remote").iterdir())
+    (dev / "2").write_bytes(event(T0 + 3 * DAY, True, "com.example.a") + event(T0 + 3 * DAY + 120, True, "com.example.b")
+                            + event(T0 + 3 * DAY + 120, False, "com.example.a") + event(T0 + 3 * DAY + 180, False, "com.example.b"))
+    stats = mod.summarize(mod.device_events(dev))
+    assert stats["com.example.a"]["minutes"] == 2.0 and stats["com.example.b"]["minutes"] == 1.0
+
+
+def test_empty_device_dirs_do_not_make_prefix_ambiguous(mod, tmp_path):
+    (tmp_path / "streams/restricted/App.InFocus/remote/AAAA2222-0000-0000-0000-000000000000").mkdir()
+    assert mod.main(["report", "AAAA"]) == 0
+
+
+def test_corrupt_sync_db_falls_back(mod, tmp_path, capsys):
+    (tmp_path / "sync/sync.db").write_bytes(b"not a database")
+    assert mod.main(["devices"]) == 0
+
+
+def test_permission_denied_points_to_full_disk_access(mod, monkeypatch):
+    def deny(self):
+        raise PermissionError("denied")
+    monkeypatch.setattr(mod.Path, "iterdir", deny)
+    with pytest.raises(SystemExit, match="Full Disk Access"):
+        mod.main(["devices"])

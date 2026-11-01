@@ -18,16 +18,16 @@ iPhone 打开「屏幕使用时间 → 跨设备共享」后，macOS 会把你�
 
 ```text
 $ python3 iphone_usage.py report A1B2 --days 7 --top 3
-16 apps opened in the last 7 days (to 2026-11-01)
+31 apps opened in the last 7 days (to 2026-11-01)
 app                                           opens  minutes  days  last used
-com.supercell.magic                              22    468.0     3  2026-11-01
-com.apple.Preferences                            17     38.0     4  2026-10-30
-com.example.vpn                                  11     47.1     2  2026-10-30
+com.example.messages                            140    212.5     7  2026-11-01
+com.example.maps                                 23     41.0     5  2026-10-31
+com.example.notes                                 9      6.2     3  2026-10-29
 ```
 
 ### 为什么不直接用屏幕使用时间的数据库
 
-[Unjiggle](https://github.com/chungty/unjiggle) 这类整理桌面的工具，按使用情况排序时读的是 `knowledgeC.db`。我在一台 macOS 26 的 Mac 上查过：这个库里 App 使用记录有 10062 条，全是这台 Mac 自己的，同账号下的 iPhone 一条都没有。手机的使用数据在 Biome 里，这个工具读的就是它。
+[Unjiggle](https://github.com/chungty/unjiggle) 这类整理桌面的工具，按使用情况排序时读的是 `knowledgeC.db`。我在开发它的那台 macOS 26 Mac 上查过：这个库里 App 使用记录有 10062 条，全是这台 Mac 自己的，同账号下的 iPhone 一条都没有。手机的使用数据在 Biome 里，这个工具读的就是它。
 
 ## 安装
 
@@ -69,7 +69,7 @@ python3 iphone_usage.py unused A1B2 --installed apps.json --days 30
 
 - `launches` 是这个 App 切到前台的次数。
 - `minutes` 是在前台的时间。一次连续超过 4 小时的，当作漏记了结束，按 0 算。
-- 锁屏、面容 ID 弹窗、表盘这类系统界面不算在内。
+- 系统界面不算在内：锁屏、面容 ID 等系统弹窗（`*UIService`、`*ViewService`）、通话界面和表盘。
 
 ## 验证情况
 

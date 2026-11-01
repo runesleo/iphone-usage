@@ -18,16 +18,16 @@ If your iPhone shares Screen Time across devices, macOS writes a log of every ap
 
 ```text
 $ python3 iphone_usage.py report A1B2 --days 7 --top 3
-16 apps opened in the last 7 days (to 2026-11-01)
+31 apps opened in the last 7 days (to 2026-11-01)
 app                                           opens  minutes  days  last used
-com.supercell.magic                              22    468.0     3  2026-11-01
-com.apple.Preferences                            17     38.0     4  2026-10-30
-com.example.vpn                                  11     47.1     2  2026-10-30
+com.example.messages                            140    212.5     7  2026-11-01
+com.example.maps                                 23     41.0     5  2026-10-31
+com.example.notes                                 9      6.2     3  2026-10-29
 ```
 
 ### Why not Screen Time / knowledgeC?
 
-Home-screen organizers such as [Unjiggle](https://github.com/chungty/unjiggle) rank apps using Screen Time data from `knowledgeC.db`. On a Mac running macOS 26, that database held 10,062 app-usage rows for the Mac itself and none for the phones signed in to the same account. The phone data is in Biome, which is what this tool reads.
+Home-screen organizers such as [Unjiggle](https://github.com/chungty/unjiggle) rank apps using Screen Time data from `knowledgeC.db`. On the macOS 26 Mac this was built on, that database held 10,062 app-usage rows for the Mac itself and none for the phones signed in to the same account. The phone data is in Biome, which is what this tool reads.
 
 ## Setup
 
@@ -69,7 +69,7 @@ JSON format of `report --json`:
 
 - `launches` counts the times the app came to the front.
 - `minutes` is time in the foreground. A stretch over 4 hours is treated as a missed end event and counts as 0.
-- Lock screen, Face ID sheets and watch-face events are left out.
+- System screens are left out: lock screen, Face ID and other system sheets (`*UIService`, `*ViewService`), the call screen and watch faces.
 
 ## Verified
 

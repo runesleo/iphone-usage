@@ -12,7 +12,7 @@ Usage:
 
 <device> is a device id or a unique prefix of one (see `devices`).
 --installed takes a JSON list or object of bundle ids, e.g. the output of
-`pymobiledevice3 apps list --no-color > apps.json` with the phone on USB.
+`pymobiledevice3 apps list --type User > apps.json` with the phone on USB.
 """
 from __future__ import annotations
 
@@ -56,8 +56,14 @@ def parse_events(blob: bytes) -> list[tuple[float, bool, str]]:
 def device_events(device_dir: Path) -> list[tuple[float, bool, str]]:
     ev = set()
     for f in device_dir.iterdir():
-        if f.is_file():
-            ev.update(parse_events(f.read_bytes()))
+        try:
+            if f.is_file():
+                ev.update(parse_events(f.read_bytes()))
+        except PermissionError:
+            raise
+        except OSError:
+            continue  # a segment rotated away mid-read
+    # same timestamp: an app's end (False) sorts before the next app's start (True)
     return sorted(ev)
 
 
@@ -86,17 +92,26 @@ def peers() -> dict[str, dict]:
     db = BIOME / "sync/sync.db"
     if not db.exists():
         return {}
-    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     try:
-        rows = con.execute("select device_identifier, me, model, platform, last_sync_date from DevicePeer").fetchall()
-    finally:
-        con.close()
+        # immutable=1: no lock or -shm writes next to Apple's database
+        con = sqlite3.connect(f"file:{db}?mode=ro&immutable=1", uri=True)
+        try:
+            rows = con.execute("select device_identifier, me, model, platform, last_sync_date from DevicePeer").fetchall()
+        finally:
+            con.close()
+    except sqlite3.Error:
+        return {}  # only used for the build column
     return {r[0]: {"me": bool(r[1]), "build": r[2], "platform": r[3], "last_sync": r[4]} for r in rows}
 
 
 def device_dirs() -> dict[str, Path]:
     root = BIOME / STREAM
-    return {p.name: p for p in sorted(root.iterdir()) if p.is_dir()} if root.exists() else {}
+    try:
+        dirs = sorted(root.iterdir())
+    except FileNotFoundError:
+        return {}
+    # skip devices with no event files, so a prefix unique in `devices` is unique here too
+    return {p.name: p for p in dirs if p.is_dir() and any(f.is_file() and f.stat().st_size for f in p.iterdir())}
 
 
 def resolve(prefix: str) -> Path:
@@ -166,7 +181,8 @@ def cmd_unused(args) -> int:
             for b in installed_ids(args.installed) if b not in used]
     emit(rows, args.json)
     first = apple_time(ev[0][0]).astimezone().date()
-    print(f"{len(rows)} installed apps not opened in the last {args.days} days (history starts {first})")
+    last = apple_time(ev[-1][0]).astimezone().date()
+    print(f"{len(rows)} installed apps not opened in the {args.days} days to {last} (history starts {first})")
     for r in sorted(rows, key=lambda r: (r["last_used"] or "", r["bundle_id"])):
         print(f"{r['bundle_id']:44} last used {r['last_used'] or 'never in history'}")
     return 0
